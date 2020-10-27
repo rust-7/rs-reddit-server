@@ -29,6 +29,7 @@ export class PostResolver {
         return post;
     }
 
+    // --- Post Update ---
     @Mutation(() => Post, { nullable: true })
     async updatePost(
         @Arg('id') id: number,
@@ -46,5 +47,15 @@ export class PostResolver {
         }
 
         return post;
+    }
+
+    // --- Post Delete ---
+    @Mutation(() => Boolean)
+    async deletePost(
+        @Arg('id') id: number,
+        @Ctx() { em }: MyContext
+    ): Promise<boolean> {
+        await em.nativeDelete(Post, { id })
+        return true;
     }
 }
