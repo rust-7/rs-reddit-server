@@ -25,7 +25,7 @@ const main = async () => {
     apolloServer.applyMiddleware({ app });
 
     app.listen(4000, () => {
-        console.log('✅ Server: http://localhost:4000');
+        console.log('🟢 Server: http://localhost:4000');
     });
 }
 

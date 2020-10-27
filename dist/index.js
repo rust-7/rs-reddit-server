@@ -33,7 +33,7 @@ const main = () => __awaiter(void 0, void 0, void 0, function* () {
     });
     apolloServer.applyMiddleware({ app });
     app.listen(4000, () => {
-        console.log('✅ Server: http://localhost:4000');
+        console.log('🟢 Server: http://localhost:4000');
     });
 });
 main().catch((err) => {
