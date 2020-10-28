@@ -2,6 +2,7 @@ import { MyContext } from "src/types";
 import { Resolver, Mutation, InputType, Field, Arg, Ctx, ObjectType, Query } from "type-graphql";
 import { User } from "../entities/User";
 import argon2 from 'argon2'
+import { EntityManager } from "@mikro-orm/postgresql";
 
 @InputType()
 class UsernamePasswordInput {
@@ -34,10 +35,7 @@ export class UserResolver {
     @Query(() => User, { nullable: true })
     async me(
         @Ctx() { req, em }: MyContext
-    ) {
-        console.log("SESSION :: " ,req.session);
-        
-        
+    ) { 
         // Not logged in
         if (!req.session.userId) {
             return null
@@ -57,7 +55,7 @@ export class UserResolver {
             return {
                 errors: [{
                     field: 'username',
-                    message: 'Username must contain more than 2 caracters'
+                    message: 'Fail ! Username must contain more than 2 caracters'
                 }]
             }
         }
@@ -66,24 +64,30 @@ export class UserResolver {
             return {
                 errors: [{
                     field: 'password',
-                    message: 'Password must contain more than 2 caracters'
+                    message: 'Fail ! Password must contain more than 2 caracters'
                 }]
             }
         }
 
         const hashedPassword = await argon2.hash(options.password)
-        const user = em.create(User, { username: options.username, password: hashedPassword });
+        let user;
         
         try {
-            await em.persistAndFlush(user);    
+            const result = await (em as EntityManager).createQueryBuilder(User).getKnexQuery().insert(
+                {
+                    username: options.username,
+                    password: hashedPassword,
+                    created_at: new Date(),
+                    updated_at: new Date(),
+                }).returning("*")
+            user = result[0];
         } catch (err) {
-            
             if (err.code === '23505') {
                 // User Duplicata...
                 return {
                     errors: [{
                         field: 'username',
-                        message: 'username is taken'
+                        message: 'Fail ! Username is already taken'
                     }]
                 }
             }
@@ -108,7 +112,7 @@ export class UserResolver {
                     errors: [
                     {
                         field: 'username',
-                        message: 'username does not exist'
+                        message: 'Fail ! Username does not exist'
                     },
                 ],
             };
@@ -120,7 +124,7 @@ export class UserResolver {
                 errors: [
                     {
                         field: 'password',
-                        message: 'Incorrect password'
+                        message: 'Fail ! Incorrect password'
                     },
                 ],
             };
