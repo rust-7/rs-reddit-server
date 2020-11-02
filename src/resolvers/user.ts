@@ -79,7 +79,7 @@ export class UserResolver {
         // Logging in the user after password succesfully changed.
         req.session.userId = user.id
 
-        return {user};
+        return { user };
     }
 
     
@@ -127,18 +127,15 @@ export class UserResolver {
         let user;
         
         try {
-            
             const result = await getConnection()
                 .createQueryBuilder()
                 .insert()
-                .into(User).values(
-                {
+                .into(User)
+                .values({
                     username: options.username,
                     email: options.email,
                     password: hashedPassword,
-                }
-            ).returning("*")
-            .execute();
+                }).returning("*").execute();
             user = result.raw;
         } catch (err) {
             if (err.code === '23505') {
