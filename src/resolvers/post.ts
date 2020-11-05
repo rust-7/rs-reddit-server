@@ -1,6 +1,6 @@
 import { isAuth } from "../middleware/isAuth";
 import { MyContext } from "../types";
-import { Resolver, Query, Arg, Mutation, InputType, Field, Ctx, UseMiddleware, Int, FieldResolver, Root, ObjectType } from "type-graphql";
+import { Resolver, Query, Arg, Mutation, InputType, Field, Ctx, UseMiddleware, Int, FieldResolver, Root, ObjectType, Info } from "type-graphql";
 import { Post } from "../entities/Post";
 import { getConnection } from "typeorm";
 import { RedisClient } from "redis";
@@ -49,7 +49,9 @@ export class PostResolver {
             json_build_object(
                 'id', u.id,
                 'username', u.username,
-                'email', u.email
+                'email', u.email,
+                'createdAt', u."createdAt",
+                'updatedAt', u."updatedAt"
             ) creator
             FROM post p
             INNER JOIN public.user u ON u.id = p."creatorId"
