@@ -3,14 +3,12 @@ import { MyContext } from "../types";
 import { Resolver, Query, Arg, Mutation, InputType, Field, Ctx, UseMiddleware, Int, FieldResolver, Root, ObjectType, Info } from "type-graphql";
 import { Post } from "../entities/Post";
 import { getConnection } from "typeorm";
-import { RedisClient } from "redis";
-import { readFile } from "fs";
+import { Upvote } from "../entities/Upvote";
 
 @InputType()
 class PostInput {
     @Field()
     title: string
-
     @Field()
     text: string
 }
@@ -19,7 +17,6 @@ class PostInput {
 class PaginatedPosts {
     @Field(() => [Post])
     posts: Post[]
-
     @Field()
     hasMore: boolean;
 }
@@ -29,6 +26,36 @@ export class PostResolver {
     @FieldResolver(() => String)
     textSnippet(@Root() root: Post){
         return root.text.slice(0, 50)
+    }
+
+    @Mutation(() => Boolean)
+    @UseMiddleware(isAuth)
+    async vote(
+        @Arg("postId", () => Int) postId: number,
+        @Arg("value", () => Int) value: number,
+        @Ctx() { req }: MyContext
+    ) {
+        const isUpvote = value !== -1;
+        const realValue = isUpvote ? 1 : -1;
+        const { userId } = req.session;
+        
+        // await Upvote.insert({
+        //     userId,
+        //     postId,
+        //     value: realValue
+        // });
+
+        await getConnection().query(`
+            START TRANSACTION;
+            INSERT INTO upvote ("userId", "postId", value)
+            VALUES (${userId}, ${postId}, ${realValue});
+            UPDATE post
+            SET points = points + ${realValue}
+            WHERE id = ${postId};
+            COMMIT;`
+        );
+        
+        return true
     }
     
     @Query(() => PaginatedPosts)
@@ -76,8 +103,6 @@ export class PostResolver {
             
 
             // const posts = await qb.getMany()
-
-            console.log("posts", posts);
 
             return { 
                 posts: posts.slice(0, realLimit), 
