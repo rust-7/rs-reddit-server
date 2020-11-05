@@ -3,6 +3,8 @@ import { MyContext } from "../types";
 import { Resolver, Query, Arg, Mutation, InputType, Field, Ctx, UseMiddleware, Int, FieldResolver, Root, ObjectType } from "type-graphql";
 import { Post } from "../entities/Post";
 import { getConnection } from "typeorm";
+import { RedisClient } from "redis";
+import { readFile } from "fs";
 
 @InputType()
 class PostInput {
@@ -36,19 +38,44 @@ export class PostResolver {
     ): Promise<PaginatedPosts> {
         const realLimit = Math.min(50, limit);
         const realLimitPlusOne = realLimit + 1;
-        const qb = getConnection()
-            .getRepository(Post)
-            .createQueryBuilder("p")
-            .orderBy('"createdAt"', 'DESC')
-            .take(realLimitPlusOne)
+        const replacements: any[] = [realLimitPlusOne];
+        
+        if (cursor) {
+            replacements.push(new Date(parseInt(cursor)));
+        }
 
-            if (cursor) {
-                qb.where('"createdAt" < :cursor', { 
-                    cursor: new Date(parseInt(cursor))
-                })
-            }
+        const posts = await getConnection().query(`
+            SELECT p.*,
+            json_build_object(
+                'id', u.id,
+                'username', u.username,
+                'email', u.email
+            ) creator
+            FROM post p
+            INNER JOIN public.user u ON u.id = p."creatorId"
+            ${ cursor ? `WHERE p."createdAt" < $2` : "" }
+            ORDER BY p."createdAt" DESC
+            LIMIT $1
+        `, replacements);
+        
+        // const qb = getConnection()
+        //     .getRepository(Post)
+        //     .createQueryBuilder("p")
+        //     .innerJoinAndSelect("p.creator","u",'u.id = p."creatorId"',)
+        //     .orderBy('p."createdAt"', 'DESC')
+        //     .take(realLimitPlusOne)
 
-            const posts = await qb.getMany()
+            // if (cursor) {
+            //     qb.where('p."createdAt" < :cursor', { 
+            //         cursor: new Date(parseInt(cursor))
+            //     })
+            // }
+
+            
+
+            // const posts = await qb.getMany()
+
+            console.log("posts", posts);
 
             return { 
                 posts: posts.slice(0, realLimit), 
